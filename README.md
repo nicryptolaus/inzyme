@@ -19,6 +19,6 @@ user@host:InotifyReactor$ touch /tmp/test.txt
 } (32 bytes) from queue
 
 # Send SIGINT
-2018-01-08 22:50:41,844 [INFO] [InotifyDaemon:28240]: Shutting down reactor
-2018-01-08 22:50:41,986 [INFO] [FileProcessor:28239]: Process Completed
+2018-01-08 22:50:41,844 [INFO] [InotifyDaemon:12346]: Shutting down reactor
+2018-01-08 22:50:41,986 [INFO] [FileProcessor:12345]: Process Completed
 ```
