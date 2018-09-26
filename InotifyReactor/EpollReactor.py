@@ -2,13 +2,10 @@ import os
 import sys
 import signal
 import select
-import ctypes
 import errno
 import multiprocessing
-from fcntl import ioctl
 from EpollFlags import *
 from Utils import splitMask
-from termios import FIONREAD
 
 class EpollReactor(object):
   """ Manages file descriptors registered with epoll instance and their
@@ -18,20 +15,25 @@ class EpollReactor(object):
     super(EpollReactor, self).__init__(*args, **kwargs)
     self.reactor = select.epoll()
     self.state = EpollReactor.State.Stopped
-    self.descriptors = {}
+    self.handlers = {}
 
-  def register(self, fd, callback, eventmask = EPOLL_DEFAULT_EVENTS):
+  def register(self, fd, handler, eventmask = EPOLL_DEFAULT_EVENTS):
     """ Register a file descriptor/eventmask with epoll instance. The supplied
-        callback will be called for each event with
-        (fd, event flags, raw bytes) as arguments """
-    if fd not in self.descriptors:
+        handler will be called for each event with
+        (fd, eventmask) as arguments """
+    if fd not in self.handlers:
       self.reactor.register(fd, eventmask)
-      self.descriptors[fd] = { 'callback': callback }
+      self.handlers[fd] = handler
+    else:
+      raise EpollReactor.Error("Descriptor already registered")
 
   def unregister(self, fd):
     """ Remove descriptor """
-    if fd in self.descriptors:
+    if fd in self.handlers:
       self.reactor.unregister(fd)
+      del self.handlers[fd]
+    else:
+      raise EpollReactor.Error("Descriptor not found")
 
   def run(self):
     self.register_signal_handlers()
@@ -40,17 +42,14 @@ class EpollReactor(object):
     try:
       while(EpollReactor.State.Running == self.state):
         for fd, mask in self.reactor.poll():
-          bytes_available = ctypes.c_int()
-          ioctl(fd, FIONREAD, bytes_available)
-          data = os.read(fd, max(bytes_available.value, 1))
-          self.descriptors[fd]['callback'](fd, mask, data)
+          self.handlers[fd](fd, mask)
     except IOError, e:
       if e.errno != errno.EINTR:
-        raise EpollReactor.Error(e)
+        raise EpollReactor.Error(e.message)
 
   def shutdown(self):
-    """ Unregister all descriptors and stop epoll instance """
-    for fd in self.descriptors:
+    """ Unregister all handlers and stop epoll instance """
+    for fd in self.handlers:
       self.reactor.unregister(fd)
     self.reactor.close()
 

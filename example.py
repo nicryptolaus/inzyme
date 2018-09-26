@@ -55,10 +55,10 @@ def main():
         processor.logger.info("Pulled {0} from queue".format(e))
     except Queue.Empty as e:
       # Queue is empty, do something else for a while
-      time.sleep(1)
+      time.sleep(.1)
       pass
     except Exception as e:
-      reactor.logger.info("Encountered an exception {0}".format(e))
+      processor.logger.info("Encountered an exception: {0}".format(e))
       pass
 
   processor.fileMonitor.join()

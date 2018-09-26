@@ -112,21 +112,28 @@ class Inotify(object):
       return Inotify.Event(wd, mask, cookie, name)
 
     def __str__(self):
+
+      try:
+        padding = len(self.name) - self.name.index(chr(0))
+      except ValueError, e:
+        padding = 0
+
       return (
         "{{\n"
         "  wd = {0},\n"
         "  mask = {1} {2},\n"
         "  cookie = {3},\n"
-        "  len = {4},\n"
-        "  name = {5}\n"
-        "}} ({6} bytes)"
+        "  name = {4}\n"
+        "  len(name) = {5} ({6} padding),\n"
+        "}} ({7} bytes)"
       ).format(
         self.wd,
         self.mask,
         Inotify.EventMask(self.mask),
         self.cookie,
-        len(self.name),
         self.name,
+        len(self.name),
+        padding,
         Inotify.Event.HeaderSize + len(self.name)
       )
 

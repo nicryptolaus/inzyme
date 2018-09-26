@@ -1,8 +1,11 @@
 import os
 import sys
+import ctypes
 import errno
 import Queue
 import multiprocessing
+from fcntl import ioctl
+from termios import FIONREAD
 from Logger import Logger
 from EpollReactor import EpollReactor
 from InotifyFlags import *
@@ -21,7 +24,11 @@ class InotifyReactor(EpollReactor, Inotify):
 
     self.register(self.event_descriptor, self.process_events)
 
-  def process_events(self, fd, flags, data):
+  def process_events(self, fd, flags):
+    bytes_available = ctypes.c_int()
+    ioctl(fd, FIONREAD, bytes_available)
+    data = os.read(fd, max(bytes_available.value, 1))
+
     maskStr = EpollReactor.EventMask(flags)
     self.logger.info("process_events({0}, {1})".format(fd, maskStr))
 
