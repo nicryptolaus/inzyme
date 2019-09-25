@@ -2,7 +2,7 @@
 
 import time
 import socket
-import Queue
+import queue
 from optparse import OptionParser
 from InotifyReactor.InotifyDaemon import *
 
@@ -15,7 +15,8 @@ class FileProcessor(object):
       raise ValueError("No options specified")
 
     self.logger = Logger.create(self.__class__.__name__)
-    self.fileMonitor = InotifyDaemon(kwargs['options'].directory)
+    self.fileMonitor = InotifyDaemon(kwargs['options'].directory,
+       IN_CLOSE_WRITE | IN_MOVED_FROM | IN_MOVED_TO )
 
 def parse_cmdline():
   parser = OptionParser()
@@ -32,7 +33,7 @@ def get_lock(process_name):
   try:
     get_lock._lock_socket.bind('\0' + process_name)
   except socket.error:
-    print 'FileProcessor is already running'
+    print('FileProcessor is already running')
     sys.exit()
 
 def main():
@@ -53,8 +54,8 @@ def main():
       for event in processor.fileMonitor.eventQueue.get_nowait():
         e = Inotify.Event(*event)
         processor.logger.info("Pulled {0} from queue".format(e))
-    except Queue.Empty as e:
-      # Queue is empty, do something else for a while
+    except queue.Empty as e:
+      # queue is empty, do something else for a while
       time.sleep(.1)
       pass
     except Exception as e:

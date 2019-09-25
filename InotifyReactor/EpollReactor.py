@@ -4,10 +4,10 @@ import signal
 import select
 import errno
 import multiprocessing
-from EpollFlags import *
-from Utils import splitMask
+from InotifyReactor.EpollFlags import *
+from InotifyReactor.Utils import splitMask
 
-class EpollReactor(object):
+class EpollReactor:
   """ Manages file descriptors registered with epoll instance and their
       callbacks """
 
@@ -41,9 +41,9 @@ class EpollReactor(object):
 
     try:
       while(EpollReactor.State.Running == self.state):
-        for fd, mask in self.reactor.poll():
+        for fd, mask in self.reactor.poll(.001):
           self.handlers[fd](fd, mask)
-    except IOError, e:
+    except IOError as e:
       if e.errno != errno.EINTR:
         raise EpollReactor.Error(e.message)
 
@@ -67,11 +67,11 @@ class EpollReactor(object):
       super(EpollReactor.Error, self).__init__(message)
       self.errors = errors
 
-  class State(object):
+  class State:
     """ Possible run-states for reactor """
     Stopped, Running = range(2)
 
-  class EventMask(object):
+  class EventMask:
     """ Utility for printing mask as a pipe-delimited string """
     def __init__(self, mask):
       self.mask = mask

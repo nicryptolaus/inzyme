@@ -1,6 +1,6 @@
 import logging
 
-class Logger(object):
+class Logger:
 
   DEFAULT_LOG_FORMAT = (
     "\r%(asctime)s "

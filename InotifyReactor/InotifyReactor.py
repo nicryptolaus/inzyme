@@ -2,20 +2,21 @@ import os
 import sys
 import ctypes
 import errno
-import Queue
+import queue
 import multiprocessing
 from fcntl import ioctl
 from termios import FIONREAD
-from Logger import Logger
-from EpollReactor import EpollReactor
-from InotifyFlags import *
-from Inotify import Inotify
+from InotifyReactor.Logger import Logger
+from InotifyReactor.EpollReactor import EpollReactor
+from InotifyReactor.InotifyFlags import *
+from InotifyReactor.Inotify import Inotify
 
 class InotifyReactor(EpollReactor, Inotify):
 
   def __init__(self, *args, **kwargs):
 
-    super(InotifyReactor, self).__init__(*args, **kwargs)
+    EpollReactor.__init__(self, *args, **kwargs)
+    Inotify.__init__(self, *args, **kwargs)
 
     self.qsize = 4 if "qsize" not in kwargs else kwargs["qsize"]
     self.event_queue = multiprocessing.Queue(self.qsize) if "queue" not in \
@@ -40,7 +41,7 @@ class InotifyReactor(EpollReactor, Inotify):
       except Inotify.Error as e:
         self.logger.error("InotifyError: {0}".format(e.message))
         break
-      except Queue.Full as e:
+      except queue.Full as e:
         self.logger.warning("Queue full")
         break
 

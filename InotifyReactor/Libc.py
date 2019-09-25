@@ -1,6 +1,6 @@
 import ctypes
 
-class libc(object):
+class libc:
   """ ctypes wrapper for system-calls """
   lib = ctypes.cdll.LoadLibrary("libc.so.6")
 

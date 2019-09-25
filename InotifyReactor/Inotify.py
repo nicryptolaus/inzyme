@@ -1,14 +1,13 @@
 import struct
-from Libc import libc
-from Utils import splitMask
-from InotifyFlags import *
+from InotifyReactor.Libc import libc
+from InotifyReactor.Utils import splitMask
+from InotifyReactor.InotifyFlags import *
 
-class Inotify(object):
+class Inotify:
   """ ctypes wrapper for inotify system calls, manages watch descriptors using
       path as key """
 
   def __init__(self, *args, **kwargs):
-    super(Inotify, self).__init__()
     flags = kwargs['flags'] if 'flags' in kwargs else 0
     fd = libc.inotify_init1(flags)
 
@@ -45,7 +44,7 @@ class Inotify(object):
     for k,v in self.watch_descriptors.iteritems():
       yield v
 
-  class EventMask(object):
+  class EventMask:
 
     def __init__(self, mask):
       self.mask = mask
@@ -53,7 +52,7 @@ class Inotify(object):
     def __str__(self):
       return '(' + ' | '.join(splitMask(self.mask, IN_FLAG_NAMES)) + ')'
 
-  class Watch(object):
+  class Watch:
 
     def __init__(self, pathname, mask, wd):
       self.pathname = pathname
@@ -80,7 +79,7 @@ class Inotify(object):
       super(Inotify.Error, self).__init__(message)
       self.errors = errors
 
-  class Event(object):
+  class Event:
     Format = '<iIII'
     HeaderSize = struct.calcsize(Format)
 
@@ -103,11 +102,10 @@ class Inotify(object):
       if len(data) < Inotify.Event.HeaderSize + length:
         raise Inotify.Error
 
-      name = ''.join(struct.unpack_from(
+      name = ''.join([b.decode('utf-8') for b in struct.unpack_from(
         length * 'c',
         data,
-        Inotify.Event.HeaderSize)
-      )
+        Inotify.Event.HeaderSize)])
 
       return Inotify.Event(wd, mask, cookie, name)
 
@@ -115,7 +113,7 @@ class Inotify(object):
 
       try:
         padding = len(self.name) - self.name.index(chr(0))
-      except ValueError, e:
+      except ValueError as e:
         padding = 0
 
       return (
