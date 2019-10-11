@@ -51,9 +51,8 @@ def main():
 
   while processor.fileMonitor.is_alive():
     try:
-      for event in processor.fileMonitor.eventQueue.get_nowait():
-        e = Inotify.Event(*event)
-        processor.logger.info("Pulled {0} from queue".format(e))
+      for event in processor.fileMonitor.get_file_events():
+        processor.logger.info("Pulled {0} from queue".format(event))
     except queue.Empty as e:
       # queue is empty, do something else for a while
       time.sleep(.1)

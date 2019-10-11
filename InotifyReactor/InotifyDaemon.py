@@ -34,6 +34,9 @@ class InotifyDaemon(multiprocessing.Process):
       self.logger.info("Shutting down reactor")
       reactor.shutdown()
 
+  def get_file_events(self):
+    return [Inotify.Event(*e) for e in self.eventQueue.get_nowait()]
+
 if __name__ == '__main__':
 
   # Ignore SIGINT
