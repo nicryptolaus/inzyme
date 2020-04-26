@@ -1,68 +1,44 @@
 #!/usr/bin/env python
 
-import time
-import socket
-import queue
 from optparse import OptionParser
-from InotifyReactor.InotifyDaemon import *
+from inzyme.inotify import *
+from inzyme.inzyme import *
 
-class FileProcessor(object):
-  """ Example class making use of InotifyReactor within a child process """
+class FileProcessor():
+  """ Example class making use of Inzyme """
 
   def __init__(self, *args, **kwargs):
-
     if 'options' not in kwargs:
       raise ValueError("No options specified")
 
     self.logger = Logger.create(self.__class__.__name__)
-    self.fileMonitor = InotifyDaemon(kwargs['options'].directory,
-       IN_CLOSE_WRITE | IN_MOVED_FROM | IN_MOVED_TO )
+    self.directory = kwargs['options'].directory
+    self.watcher = Inzyme()
+    self.eventMask = IN_ALL_EVENTS
+    self.watcher.add_watch(self.directory, self.eventMask)
+
+  async def get_event(self):
+    return await self.watcher.event_queue.get()
+
+  def run_worker(self, event):
+    self.logger.info(event)
 
 def parse_cmdline():
   parser = OptionParser()
   parser.add_option("-d", "--dir", dest="directory", default='/tmp',
             help="directory to monitor")
+  return parser.parse_args()
 
-  (options, args) = parser.parse_args()
-
-  return (options, args)
-
-def get_lock(process_name):
-  get_lock._lock_socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-
-  try:
-    get_lock._lock_socket.bind('\0' + process_name)
-  except socket.error:
-    print('FileProcessor is already running')
-    sys.exit()
-
-def main():
-  # Ignore SIGINT
-  signal.signal(signal.SIGINT, signal.SIG_IGN)
-
-  # Only run one instance
-  get_lock('FileProcessor')
-
+async def main():
   (options, args) = parse_cmdline()
   processor = FileProcessor(options=options)
 
-  # Start reactor in separate process
-  processor.fileMonitor.start()
-
-  while processor.fileMonitor.is_alive():
-    try:
-      for event in processor.fileMonitor.get_file_events():
-        processor.logger.info("Pulled {0} from queue".format(event))
-    except queue.Empty as e:
-      # queue is empty, do something else for a while
-      time.sleep(.1)
-      pass
-    except Exception as e:
-      processor.logger.info("Encountered an exception: {0}".format(e))
-      pass
-
-  processor.fileMonitor.join()
-  processor.logger.info("Process Completed")
+  while asyncio.get_running_loop().is_running():
+    event = await processor.get_event()
+    processor.run_worker(event)
 
 if __name__ == '__main__':
-  main()
+  try:
+    asyncio.run(main())
+  except KeyboardInterrupt:
+    pass
