@@ -5,7 +5,7 @@ class Logger:
   DEFAULT_LOG_FORMAT = (
     "\r%(asctime)s "
     "[%(levelname)s] "
-    "[%(name)s:%(process)s]: "
+    "[%(name)s]: "
     "%(message)s"
   )
 

@@ -1,7 +1,6 @@
 import struct
-from InotifyReactor.Libc import libc
-from InotifyReactor.Utils import splitMask
-from InotifyReactor.InotifyFlags import *
+from inzyme.libc import libc
+from inzyme.inotify_flags import *
 
 class Inotify:
   """ ctypes wrapper for inotify system calls, manages watch descriptors using
@@ -46,11 +45,17 @@ class Inotify:
 
   class EventMask:
 
+    @staticmethod
+    def splitMask(mask, lookup = IN_FLAG_NAMES, num_flags = 64):
+      flags = filter(lambda bit: mask & bit, [1 << x for x in range(num_flags)])
+      flag_names = [lookup[bit] for bit in flags]
+      return flag_names
+
     def __init__(self, mask):
       self.mask = mask
 
     def __str__(self):
-      return '(' + ' | '.join(splitMask(self.mask, IN_FLAG_NAMES)) + ')'
+      return '({})'.format(' | '.join(Inotify.EventMask.splitMask(self.mask)))
 
   class Watch:
 
@@ -87,14 +92,21 @@ class Inotify:
       self.wd = wd
       self.mask = mask
       self.cookie = cookie
-      self.name = name
+      try:
+        self.name_padding = len(name) - name.index(chr(0))
+        self.name = name[:len(name)- self.name_padding]
+      except ValueError as e:
+        self.name_padding = 0
+        self.name = name
       self.len = len(name)
       self.size = Inotify.Event.HeaderSize + self.len
 
     @classmethod
     def deserialize(self, data):
-      if len(data) <= Inotify.Event.HeaderSize:
-        raise Inotify.Error("Invalid header size")
+      if len(data) < Inotify.Event.HeaderSize:
+        raise Inotify.Error("Invalid header size [{} != {}]".format(
+            len(data),
+            Inotify.Event.HeaderSize))
 
       [wd, mask, cookie, length] =\
         struct.unpack_from(Inotify.Event.Format, data)
@@ -111,29 +123,16 @@ class Inotify:
 
     def __str__(self):
 
-      try:
-        padding = len(self.name) - self.name.index(chr(0))
-      except ValueError as e:
-        padding = 0
-
       return (
         "{{\n"
-        "  wd = {0},\n"
-        "  mask = {1} {2},\n"
-        "  cookie = {3},\n"
-        "  name = {4}\n"
-        "  len(name) = {5} ({6} padding),\n"
-        "}} ({7} bytes)"
+        "  wd = {},\n"
+        "  mask = {},\n"
+        "  cookie = {},\n"
+        "  name = {}\n"
+        "}}"
       ).format(
         self.wd,
-        self.mask,
         Inotify.EventMask(self.mask),
         self.cookie,
-        self.name,
-        len(self.name),
-        padding,
-        Inotify.Event.HeaderSize + len(self.name)
+        self.name
       )
-
-    def pack(self):
-      return self.wd, self.mask, self.cookie, self.name
